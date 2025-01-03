@@ -190,7 +190,10 @@ def linux_device_capabilities() -> DeviceCapabilities:
     handle = pynvml.nvmlDeviceGetHandleByIndex(0)
     gpu_raw_name = pynvml.nvmlDeviceGetName(handle).upper()
     gpu_name = gpu_raw_name.rsplit(" ", 1)[0] if gpu_raw_name.endswith("GB") else gpu_raw_name
-    gpu_memory_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+    if gpu_raw_name == 'ORIN (NVGPU)': # In case of a Jetson device
+      gpu_memory_info = get_jetson_device_meminfo()
+    else:
+      gpu_memory_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
 
     if DEBUG >= 2: print(f"NVIDIA device {gpu_name=} {gpu_memory_info=}")
 
@@ -215,3 +218,28 @@ def linux_device_capabilities() -> DeviceCapabilities:
       memory=psutil.virtual_memory().total // 2**20,
       flops=DeviceFlops(fp32=0, fp16=0, int8=0),
     )
+
+
+def get_jetson_device_meminfo():
+  from re import search
+  from pynvml import c_nvmlMemory_t
+
+  def extract_numeric_value(text):
+    """Extract the first numeric value from a string."""
+    match = search(r'\d+', text)
+    return int(match.group()) if match else 0
+
+  # Read total and free memory from /proc/meminfo
+  with open("/proc/meminfo") as fp:
+    total_memory = extract_numeric_value(fp.readline())
+    free_memory = extract_numeric_value(fp.readline())
+
+  # Calculate used memory
+  used_memory = total_memory - free_memory
+
+  # Return memory info object
+  return c_nvmlMemory_t(
+    total=total_memory * 1000,
+    free=free_memory * 1000,
+    used=used_memory * 1000
+  )
