@@ -102,12 +102,12 @@ async def get_auth_headers():
 def get_repo_root(repo_id: str) -> Path:
   """Get the root directory for a given repo ID in the Hugging Face cache."""
   sanitized_repo_id = str(repo_id).replace("/", "--")
-  return get_hf_home()/"hub"/f"models--{sanitized_repo_id}"
+  return get_hf_home()/f"models--{sanitized_repo_id}"
 
 async def move_models_to_hf(seed_dir: Union[str, Path]):
-  """Move model in resources folder of app to .cache/huggingface/hub"""
+  """Move model in resources folder of app to .cache/huggingface"""
   source_dir = Path(seed_dir)
-  dest_dir = get_hf_home()/"hub"
+  dest_dir = get_hf_home()
   await aios.makedirs(dest_dir, exist_ok=True)  
   for path in source_dir.iterdir():
     if path.is_dir() and path.name.startswith("models--"):
